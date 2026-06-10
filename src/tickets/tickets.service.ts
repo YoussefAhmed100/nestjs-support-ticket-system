@@ -1,11 +1,12 @@
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Ticket } from './schemas/ticket.schema';
 import { TicketChainFactory } from './factories/ticket-chain.factory';
 import { CreateTicketDto } from './dto/create-ticket.dto';
-import { TicketHandler } from './handlers/ticket-handler.abstract';
 import { TicketStatus } from './enums/ticket-status.enum';
+import { PreCheckFactory } from './pre-check/factories/pre-check.factory';
+
 
 @Injectable()
 export class TicketsService {
@@ -14,45 +15,42 @@ export class TicketsService {
     private readonly ticketModel: Model<Ticket>,
 
     private readonly chainFactory: TicketChainFactory,
+    private readonly preCheckFactory: PreCheckFactory
   ) {}
 
-  async createTicket(dto: CreateTicketDto) {
-    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+async createTicket(dto: CreateTicketDto) {
+  //  Pre-Check Chain
+  const preChain = this.preCheckFactory.build();
+  const preResult = await preChain.handle(dto);
 
-    const existingTicket = await this.ticketModel.findOne({
-      customerName: dto.customerName,
-      description: dto.description,
-      createdAt: {
-        $gte: oneHourAgo,
-      },
-    });
-    if (existingTicket) {
-      return {
-        message: 'A similar ticket has been created within the last hour. Please wait for support to respond.',
-        ticketId: existingTicket._id.toString(),
-      };
-    }
-
-    // Create ticket in DB
-    const ticket = await this.ticketModel.create({
-      ...dto,
-      status: TicketStatus.PENDING,
-    });
-
-    const chain: TicketHandler = this.chainFactory.buildChain();
-
-    const result = await chain.handle(ticket);
-
-    ticket.status = result.status;
-    ticket.handledBy = result.handledBy;
-
-    await ticket.save();
-
-    return {
-      ticketId: ticket._id.toString(),
-      ...result,
-    };
+  if (preResult?.ok === false) {
+    throw new ConflictException({
+    ok: false,
+    reason: preResult.reason,
+    existingTicketId: preResult.existingTicketId,
+  });
   }
+
+  //  Create ticket in DB
+  const ticket = await this.ticketModel.create({
+    ...dto,
+    status: TicketStatus.PENDING,
+  });
+
+  //  Business Chain
+  const chain = this.chainFactory.buildChain();
+  const result = await chain.handle(ticket);
+
+  ticket.status = result.status;
+  ticket.handledBy = result.handledBy;
+
+  await ticket.save();
+
+  return {
+    ticketId: ticket._id.toString(),
+    ...result,
+  };
+}
 
   async getAllTicket() {
     return this.ticketModel.find({}).sort({ createdAt: -1 }).lean();

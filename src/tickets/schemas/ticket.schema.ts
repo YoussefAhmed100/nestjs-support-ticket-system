@@ -14,7 +14,7 @@ export type TicketDocument = HydratedDocument<Ticket>;
   versionKey: false,
 })
 export class Ticket {
-  @Prop({ required: true })
+  @Prop({ required: true ,type:String , trim:true})
   customerName: string;
 
   @Prop({
@@ -31,6 +31,7 @@ export class Ticket {
 
   @Prop({
     required: true,
+    trim:true
   })
   description: string;
 
@@ -48,6 +49,9 @@ export class Ticket {
   default: [],
 })
 auditTrail: AuditEntry[];
+
+@Prop({ required: true, type: String, index: true })
+duplicateHash: string;
 }
 
 export const TicketSchema = SchemaFactory.createForClass(Ticket);

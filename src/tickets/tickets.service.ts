@@ -7,8 +7,6 @@ import { CreateTicketDto } from './dto/create-ticket.dto';
 import { TicketHandler } from './handlers/ticket-handler.abstract';
 import { TicketStatus } from './enums/ticket-status.enum';
 
-
-
 @Injectable()
 export class TicketsService {
   constructor(
@@ -19,6 +17,22 @@ export class TicketsService {
   ) {}
 
   async createTicket(dto: CreateTicketDto) {
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+
+    const existingTicket = await this.ticketModel.findOne({
+      customerName: dto.customerName,
+      description: dto.description,
+      createdAt: {
+        $gte: oneHourAgo,
+      },
+    });
+    if (existingTicket) {
+      return {
+        message: 'A similar ticket has been created within the last hour. Please wait for support to respond.',
+        ticketId: existingTicket._id.toString(),
+      };
+    }
+
     // Create ticket in DB
     const ticket = await this.ticketModel.create({
       ...dto,
@@ -38,5 +52,9 @@ export class TicketsService {
       ticketId: ticket._id.toString(),
       ...result,
     };
+  }
+
+  async getAllTicket() {
+    return this.ticketModel.find({}).sort({ createdAt: -1 }).lean();
   }
 }

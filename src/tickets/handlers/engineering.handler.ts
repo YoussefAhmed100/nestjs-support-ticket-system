@@ -23,7 +23,13 @@ export class EngineeringHandler extends TicketHandler {
       ticket.status = TicketStatus.RESOLVED;
       ticket.handledBy = 'Engineering';
 
-      await ticket.save();
+      this.addAudit(ticket, {
+        handler: 'Engineering',
+        action: 'HANDLED',
+        reason: 'HIGH priority + BUG/TECHNICAL category',
+        timestamp: new Date(),
+      });
+
 
       return {
         handled: true,
@@ -33,6 +39,14 @@ export class EngineeringHandler extends TicketHandler {
         processedAt: new Date(),
       };
     }
+
+    // ❌ AUDIT SKIPPED
+    this.addAudit(ticket, {
+      handler: 'Engineering',
+      action: 'SKIPPED',
+      reason: 'Not HIGH priority or invalid category',
+      timestamp: new Date(),
+    });
 
     return this.passToNext(ticket);
   }

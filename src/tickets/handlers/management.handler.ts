@@ -16,7 +16,13 @@ export class ManagementHandler extends TicketHandler {
       ticket.status = TicketStatus.ESCALATED;
       ticket.handledBy = 'Management';
 
-      await ticket.save();
+      this.addAudit(ticket, {
+        handler: 'Management',
+        action: 'HANDLED',
+        reason: 'CRITICAL priority escalation handled',
+        timestamp: new Date(),
+      });
+
 
       return {
         handled: true,
@@ -28,14 +34,21 @@ export class ManagementHandler extends TicketHandler {
     }
 
     ticket.status = TicketStatus.ESCALATED;
+    ticket.handledBy = 'Management';
 
-    await ticket.save();
+    this.addAudit(ticket, {
+      handler: 'Management',
+      action: 'ESCALATED',
+      reason: 'Final fallback - no handler matched in chain',
+      timestamp: new Date(),
+    });
+
 
     return {
-      handled: true,
-      handledBy: 'Management',
+      handled: false,
+      handledBy: 'NONE',
       status: TicketStatus.ESCALATED,
-      message: `Ticket ${ticket._id.toString()} escalated to Management (final fallback)`,
+      message: `Ticket ${ticket._id.toString()} reached final escalation (unhandled case)`,
       processedAt: new Date(),
     };
   }

@@ -10,4 +10,5 @@ export interface HandlerResult {
   message: string;
 
   processedAt: Date;
+  //  handlersPath: string[];
 }

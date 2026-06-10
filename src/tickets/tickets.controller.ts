@@ -11,4 +11,9 @@ export class TicketsController {
     return this.ticketsService.createTicket(dto);
   }
 
+  @Get()
+  findAll() {
+    return this.ticketsService.getAllTicket();
+  }
+
 }

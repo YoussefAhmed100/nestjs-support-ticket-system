@@ -25,7 +25,13 @@ export class TechnicalSupportHandler extends TicketHandler {
       ticket.status = TicketStatus.RESOLVED;
       ticket.handledBy = 'Technical Support';
 
-      await ticket.save();
+      this.addAudit(ticket, {
+        handler: 'Technical Support',
+        action: 'HANDLED',
+        reason: 'Valid priority (LOW/MEDIUM) + TECHNICAL/BUG category',
+        timestamp: new Date(),
+      });
+
 
       return {
         handled: true,
@@ -35,6 +41,13 @@ export class TechnicalSupportHandler extends TicketHandler {
         processedAt: new Date(),
       };
     }
+
+    this.addAudit(ticket, {
+      handler: 'Technical Support',
+      action: 'SKIPPED',
+      reason: 'Priority or category mismatch',
+      timestamp: new Date(),
+    });
 
     return this.passToNext(ticket);
   }

@@ -13,14 +13,20 @@ import { HandlerResult } from '../interfaces/handler-result.interface';
 export class BasicSupportHandler extends TicketHandler {
   async handle(ticket: TicketDocument): Promise<HandlerResult> {
     const canHandle =
-      ticket.priority === Priority.LOW ||
+      ticket.priority === Priority.LOW &&
       ticket.category === Category.ACCOUNT;
 
     if (canHandle) {
       ticket.status = TicketStatus.RESOLVED;
       ticket.handledBy = 'Basic Support';
 
-      await ticket.save(); 
+      this.addAudit(ticket, {
+        handler: 'Basic Support',
+        action: 'HANDLED',
+        reason: 'LOW priority + ACCOUNT category',
+        timestamp: new Date(),
+      });
+
 
       return {
         handled: true,
@@ -30,6 +36,13 @@ export class BasicSupportHandler extends TicketHandler {
         processedAt: new Date(),
       };
     }
+
+    this.addAudit(ticket, {
+      handler: 'Basic Support',
+      action: 'SKIPPED',
+      reason: 'Does not match LOW + ACCOUNT rules',
+      timestamp: new Date(),
+    });
 
     return this.passToNext(ticket);
   }
